@@ -16,6 +16,7 @@ import time
 import sys
 import os
 import re
+from .BrowserDiagnostics import page_diagnostic
 
 I_AM_EXECUTABLE = (True if (getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')) else False)
 PATH_TO_SELF = sys.executable if I_AM_EXECUTABLE else __file__
@@ -251,6 +252,7 @@ def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEF
             last_error = type(E).__name__
         time.sleep(delay)
     if raise_exception_if_failed:
+        diagnostic = page_diagnostic(driver_obj) if os.environ.get('ETKG_DIAGNOSTICS') == '1' else ''
         # Report observable state, not an unsupported diagnosis such as an IP block.
         try:
             title = driver_obj.title[:120]
@@ -265,7 +267,7 @@ def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEF
             f'Timed out waiting for {description} after {max_iter} checks. '
             f'Page title: {title!r}; available onboarding controls: {controls}; '
             f'last browser error: {last_error or "none"}. '
-            'This does not establish an IP block.'
+            f'This does not establish an IP block. {diagnostic}'
         )
 
 def dataGenerator(length, only_numbers=False):
