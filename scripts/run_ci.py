@@ -11,7 +11,7 @@ PROVIDERS = ('1secmail', 'guerrillamail', 'developermail', 'mailticking',
 
 def run(environ=None):
     env = os.environ if environ is None else environ
-    provider = env.get('EMAIL_PROVIDER', 'emailfake')
+    provider = env.get('EMAIL_PROVIDER', 'inboxes')
     mode = env.get('KEY_MODE', '--key')
     if provider not in PROVIDERS or mode not in ('--key', '--small-business-key'):
         raise ValueError('Invalid email provider or key mode')

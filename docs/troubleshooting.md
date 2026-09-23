@@ -12,6 +12,9 @@ not prove message delivery or acceptance by ESET.
 The Windows runner check on September 23, 2026 found that `emailfake.com`
 returned a page titled **Access temporarily limited**, instead of an inbox.
 This is a provider access restriction, not a Node.js or checkout error.
+The same runner successfully initialized a mailbox with `inboxes`, which is
+now the workflow default. The standalone CLI retains its upstream default;
+pass `--email-api inboxes` explicitly when checking this provider locally.
 Do not treat a provider's challenge page as a successful mailbox. Wait for
 access to be restored or select another supported provider. Interactive
 verification must be completed through the provider's supported process.
