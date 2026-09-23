@@ -4,6 +4,9 @@ from email import policy, parser
 
 import requests
 import time
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from urllib.parse import urlsplit
 
 DEFINE_PARSE_10MINUTEMAIL_INBOX_FUNCTION = """function parse_10minutemail_inbox() {
     updatemailbox()
@@ -89,7 +92,9 @@ return messages_header
 """
 PARSE_EMAILFAKE_INBOX = """
 let inbox = []
-let messages = document.getElementById('email-table').children
+let table = document.getElementById('email-table')
+if (!table || !table.children.length) return inbox
+let messages = table.children
 let first_message = messages[0]
 let first_childrens = first_message.children
 if (first_message.tagName === 'DIV')
@@ -404,18 +409,28 @@ class EmailFakeAPI:
         self.first_parse = True
 
     def init(self):
-        self.driver.get('https://emailfake.com/fake_email_generator')
+        self.driver.get('https://emailfake.com/')
         self.window_handle = self.driver.current_window_handle
-        untilConditionExecute(self.driver, f"return {GET_EBID}('email_ch_text').innerText.trim() !== ''", max_iter=15)
-        self.email = self.driver.execute_script(f"return {GET_EBID}('email_ch_text').innerText.trim()")
-        self.driver.get('https://emailfake.com')
+        def read_address(driver):
+            value = driver.find_element('id', 'email_ch_text').text.strip()
+            return value if re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', value) else False
+        try:
+            self.email = WebDriverWait(self.driver, 30).until(read_address)
+        except TimeoutException as error:
+            host = urlsplit(self.driver.current_url).netloc
+            title = self.driver.title[:120]
+            raise RuntimeError(
+                f'emailfake did not display an email address within 30 seconds '
+                f'(host: {host}, page title: {title!r}). '
+                'The provider may be unavailable or require an interactive verification.'
+            ) from error
     
     def parse_inbox(self):
         self.driver.switch_to.window(self.window_handle)
         if self.opened_mail or self.first_parse:
             self.driver.get('https://emailfake.com')
             self.opened_mail = False
-            self.first_parse = True
+            self.first_parse = False
         try:
             inbox = self.driver.execute_script(PARSE_EMAILFAKE_INBOX)
             if inbox is not None:

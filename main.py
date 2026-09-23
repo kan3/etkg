@@ -460,6 +460,8 @@ def main(disable_exit=False):
     global PROXY_ERROR_COUNTER_LIMIT
     global PROXY_ERROR_COUNTER
     global DRIVER
+    exit_code = 0
+    DRIVER = None
     if args['return_exit_code'] != 0:
         sys.exit(args['return_exit_code'])
     if MBCI_MODE and not disable_exit:
@@ -589,12 +591,12 @@ def main(disable_exit=False):
                 if email_obj.email is not None:
                     logging.info('Mail registration completed successfully!')
                     console_log('Mail registration completed successfully!', OK, silent_mode=SILENT_MODE)
-            except:
-                pass
-            if email_obj.email is None:
-                logging.critical('Mail registration was not completed, try using a different Email API!')
-                console_log('Mail registration was not completed, try using a different Email API!\n', ERROR, silent_mode=SILENT_MODE)
+            except Exception as error:
                 PROXY_ERROR_COUNTER += 1
+                raise RuntimeError(f'[{args["email_api"]}] Mail registration failed: {error}') from error
+            if not email_obj.email:
+                PROXY_ERROR_COUNTER += 1
+                raise RuntimeError(f'[{args["email_api"]}] Mail registration returned no email address.')
         else:
             email_obj = CustomEmailAPI()
             while True:
@@ -719,6 +721,7 @@ def main(disable_exit=False):
                 else:
                     EPHK_obj.removeLicense()
     except IPBlockedException:
+        exit_code = 1
         logging.critical("EXC_INFO:", exc_info=True)
         traceback_string = traceback.format_exc()
         if PROXIES != []:
@@ -727,10 +730,11 @@ def main(disable_exit=False):
                 PROXY_COUNTER += 1
         console_log(traceback_string, ERROR, silent_mode=SILENT_MODE)
     except Exception as E:
+        exit_code = 1
         PROXY_ERROR_COUNTER_LIMIT += 1
         logging.critical("EXC_INFO:", exc_info=True)
         traceback_string = traceback.format_exc()
-        if str(type(E)).find('selenium') and traceback_string.find('Stacktrace:') != -1: # disabling stacktrace output
+        if 'selenium' in type(E).__module__ and 'Stacktrace:' in traceback_string: # disabling stacktrace output
             traceback_string = traceback_string.split('Stacktrace:', 1)[0]
         console_log(traceback_string, ERROR, silent_mode=SILENT_MODE)
 
@@ -741,9 +745,16 @@ def main(disable_exit=False):
             PROXY_COUNTER += 1
 
     if globals().get('DRIVER', None) is not None:
-        DRIVER.quit()
+        try:
+            DRIVER.quit()
+        except Exception:
+            logging.exception('Browser cleanup failed')
+            exit_code = 1
+        finally:
+            DRIVER = None
     if not disable_exit:
-        exit_program(0)
+        exit_program(exit_code)
+    return exit_code
 
 if __name__ == '__main__':
     if MBCI_MODE:
@@ -798,19 +809,18 @@ if __name__ == '__main__':
         main()
     else:
         args['skip_update_check'] = True
+        exit_code = 0
         for i in range(args['repeat']):
             try:
                 logging.info(f'------------ Initializing of {i+1} start ------------')
                 console_log(f'\n{Fore.MAGENTA}------------ Initializing of {Fore.YELLOW}{i+1} {Fore.MAGENTA}start ------------{Fore.RESET}\n', silent_mode=SILENT_MODE)
-                if i == 0: # the first run sets up the environment for subsequent runs, speeding them up
-                    main(disable_exit=True)
+                result = main(disable_exit=True)
+                exit_code = max(exit_code, result)
+                if result == 0: # reuse setup only after a successful attempt
                     args['skip_webdriver_menu'] = True
-                elif i+1 == args['repeat']:
-                    main()
-                else:
-                    main(disable_exit=True)
             except KeyboardInterrupt:
-                exit_program(0, DRIVER)
+                exit_program(130, DRIVER)
+        exit_program(exit_code)
 
 
 
