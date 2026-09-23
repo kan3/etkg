@@ -9,6 +9,24 @@ PROVIDERS = ('1secmail', 'guerrillamail', 'developermail', 'mailticking',
              'fakemail', 'inboxes', 'incognitomail', 'emailfake')
 
 
+def report_result(output, count, operation, returncode, env):
+    """Summarize partial results without copying credentials into the summary."""
+    label = 'Account Email:' if operation == '--account' else 'License Key:'
+    text = output.read_text(encoding='utf-8', errors='replace') if output.is_file() else ''
+    completed = sum(line.startswith(label) and bool(line[len(label):].strip())
+                    for line in text.splitlines())
+    message = (f'{operation}: {completed} completed out of {count} requested; '
+               f'script exit code {returncode}.')
+    print(message, flush=True)
+    summary = env.get('GITHUB_STEP_SUMMARY')
+    if summary:
+        with open(summary, 'a', encoding='utf-8') as stream:
+            stream.write(f'- {message}\n')
+    if returncode and completed:
+        print('Partial results are present in the script output above. '
+              'The job fails because at least one attempt failed.', flush=True)
+
+
 def run(environ=None):
     env = os.environ if environ is None else environ
     provider = env.get('EMAIL_PROVIDER', 'inboxes')
@@ -39,6 +57,7 @@ def run(environ=None):
             '--skip-webdriver-menu', '--no-logo', '--disable-progress-bar',
             '--disable-logging', '--repeat', str(count), '--output-file', str(output),
         ], cwd=ROOT)
+        report_result(output, count, operation, result.returncode, env)
         if result.returncode:
             return result.returncode
         if not output.is_file() or not output.stat().st_size:

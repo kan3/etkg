@@ -15,6 +15,17 @@ but that does not prove that each live browser integration works.
 
 ## Mail and workflow diagnostics
 
+The four-attempt run on September 23, 2026 completed one request, timed out
+waiting for a confirmation link once, and twice timed out waiting for the
+home-product trial option. A failed batch can therefore contain successful
+results in its console output. The workflow summary now reports completed
+versus requested counts without including account credentials or keys.
+
+Browser-condition timeouts now report the page title and available onboarding
+control labels. A missing trial option alone does not establish an IP block;
+the old `TRY VPN` diagnosis was unsupported. The confirmation-email timeout
+also does not distinguish nondelivery from an unrecognized email template.
+
 The **Account and Key Generator** workflow now runs the selected branch of
 this repository. It no longer clones and executes the upstream repository.
 Use GitHub's **Use workflow from** selector to choose a branch.

@@ -231,7 +231,7 @@ def clear_console():
     else:
         os.system('clear')
 
-def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEFAULT_MAX_ITER, positive_result=True, raise_exception_if_failed=True, return_js_result=False):
+def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEFAULT_MAX_ITER, positive_result=True, raise_exception_if_failed=True, return_js_result=False, description='browser condition'):
     driver_obj.execute_script(f'window.{GET_EBAV} = {DEFINE_GET_EBAV_FUNCTION}')
     driver_obj.execute_script(f'window.{CLICK_WITH_BOOL} = {DEFINE_CLICK_WITH_BOOL_FUNCTION}')
     pre_js = [
@@ -239,6 +239,7 @@ def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEF
         DEFINE_CLICK_WITH_BOOL_FUNCTION
     ]
     js = '\n'.join(pre_js+[js])
+    last_error = None
     for _ in range(max_iter):
         try:
             result = driver_obj.execute_script(js)
@@ -247,10 +248,25 @@ def untilConditionExecute(driver_obj, js: str, delay=DEFAULT_DELAY, max_iter=DEF
             elif result == positive_result:
                 return True
         except Exception as E:
-            pass
+            last_error = type(E).__name__
         time.sleep(delay)
     if raise_exception_if_failed:
-        raise RuntimeError('untilConditionExecute: the code did not return the desired value! TRY VPN!')
+        # Report observable state, not an unsupported diagnosis such as an IP block.
+        try:
+            title = driver_obj.title[:120]
+            controls = driver_obj.execute_script(
+                "return Array.from(document.querySelectorAll('[data-label]'))"
+                ".map(e => e.getAttribute('data-label'))"
+                ".filter(v => /^onboarding-[a-z0-9-]+$/.test(v)).slice(0, 30)"
+            )
+        except Exception:
+            title, controls = 'unavailable', []
+        raise RuntimeError(
+            f'Timed out waiting for {description} after {max_iter} checks. '
+            f'Page title: {title!r}; available onboarding controls: {controls}; '
+            f'last browser error: {last_error or "none"}. '
+            'This does not establish an IP block.'
+        )
 
 def dataGenerator(length, only_numbers=False):
     """generates a password by default. If only_numbers=True - phone number"""

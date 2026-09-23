@@ -134,7 +134,9 @@ class EsetKeygen(object):
         uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('label', 'data-label', 'onboarding-add-subscription-protect-card-trial'))")
         self.__press_button_with_text(['continue', 'continua'])
     
-        uCE(self.driver, f"return {GET_EBAV}('label', 'data-label', 'onboarding-trial-protect-card-148') != null")
+        trial_card = '148' if self.mode == 'ESET HOME' else '172'
+        uCE(self.driver, f"return {GET_EBAV}('label', 'data-label', 'onboarding-trial-protect-card-{trial_card}') != null",
+            description=f'{self.mode} trial option (card {trial_card})')
         if self.mode == 'ESET HOME':
             uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('label', 'data-label', 'onboarding-trial-protect-card-148'))")
         elif self.mode == 'SMALL BUSINESS':
