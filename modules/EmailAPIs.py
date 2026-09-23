@@ -305,19 +305,26 @@ class InboxesAPI:
                 if button.text.strip().lower() == 'choose for me':
                     button.click()
                     break
-            time.sleep(2)
             try:
-                for _ in range(3):
-                    for element in self.driver.execute_script(f'return {GET_EBTN}("span")'):
-                        new_email = ''.join(element.text.split())
-                        if new_email is not None:
-                            new_email = re.match(r'[-a-z0-9+.]+@[a-z]+(\.[a-z]+)+', new_email)
-                            if new_email is not None:
-                                self.email = new_email.group()
-                                break
-            except:
-                time.sleep(1)
-    
+                self.email = WebDriverWait(self.driver, 30).until(self._ready_address)
+            except TimeoutException as error:
+                from .BrowserDiagnostics import page_diagnostic
+                raise RuntimeError(
+                    'inboxes: no valid email address appeared within 30 seconds. '
+                    + page_diagnostic(self.driver)
+                ) from error
+        else:
+            from .BrowserDiagnostics import page_diagnostic
+            raise RuntimeError('inboxes: create-inbox button was not available. '
+                               + page_diagnostic(self.driver))
+
+    def _ready_address(self, driver):
+        for element in driver.find_elements('css selector', 'span'):
+            address = element.text.strip()
+            if re.fullmatch(r'[A-Za-z0-9.!#$%&\'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}', address):
+                return address
+        return False
+
     def get_messages(self):
         r = requests.get(f'https://inboxes.com/api/v2/inbox/{self.email}')
         raw_inbox = r.json()['msgs']
