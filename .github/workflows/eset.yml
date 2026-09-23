@@ -23,10 +23,10 @@ on:
         options: ['--key', '--small-business-key']
         default: '--key'
       os:
-        description: 'Runner operating system'
+        description: 'Runner operating system (Ubuntu verified)'
         type: choice
         options: [ubuntu-latest, macos-latest, windows-latest]
-        default: windows-latest
+        default: ubuntu-latest
       mail_only:
         description: 'Check mail initialization only; do not register accounts or request keys'
         type: boolean

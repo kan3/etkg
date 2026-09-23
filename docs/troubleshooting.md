@@ -1,5 +1,20 @@
 # Workflow troubleshooting
 
+## Verified configuration
+
+Use **ubuntu-latest** with **inboxes**, now the workflow defaults.
+An end-to-end run on September 23, 2026 successfully initialized a mailbox,
+registered and confirmed one account, and produced the requested trial-key
+output: [verified run](https://github.com/kan3/etkg/actions/runs/35853460769).
+
+The Windows comparison run initialized the mailbox and loaded the registration
+form, but its local ChromeDriver connection was reset before submission.
+That Windows-specific failure remains unresolved; use the verified Ubuntu
+configuration. Mocked regression tests pass on all three operating systems,
+but that does not prove that each live browser integration works.
+
+## Mail and workflow diagnostics
+
 The **Account and Key Generator** workflow now runs the selected branch of
 this repository. It no longer clones and executes the upstream repository.
 Use GitHub's **Use workflow from** selector to choose a branch.
