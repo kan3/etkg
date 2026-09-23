@@ -5,10 +5,35 @@ from selenium.common.exceptions import (
     ElementClickInterceptedException, StaleElementReferenceException, TimeoutException,
 )
 from selenium.webdriver.support.ui import WebDriverWait
+from .BrowserDiagnostics import page_diagnostic
 
 WELCOME = '[data-label="welcome-login-log-in-button"]'
 LOGIN_BUTTON = '[data-label="log-in-button"]'
 HOME_CONTROLS = '[data-label^="onboarding-"], [data-label="license-list-open-detail-page-btn"]'
+
+
+class TrialUnavailableError(RuntimeError):
+    """The service explicitly declined trial availability; do not retry it."""
+
+
+def trial_option_state(driver, card):
+    page_text = driver.execute_script('return document.body ? document.body.innerText : ""') or ''
+    if ('No free 30-day trials available' in page_text or
+            "already used your available trials" in page_text):
+        raise TrialUnavailableError(
+            'ESET reports no free 30-day trials available: the available trials have '
+            'already been used. The workflow cannot issue a trial key without ESET eligibility.'
+        )
+    return bool(visible(driver, f'[data-label="onboarding-trial-protect-card-{card}"]'))
+
+
+def wait_for_trial_option(driver, card, timeout=30):
+    try:
+        WebDriverWait(driver, timeout, ignored_exceptions=(StaleElementReferenceException,)).until(
+            lambda browser: trial_option_state(browser, card)
+        )
+    except TimeoutException as error:
+        raise RuntimeError(f'Timed out waiting for trial option {card}. {page_diagnostic(driver)}') from error
 
 
 def visible(driver, selector):

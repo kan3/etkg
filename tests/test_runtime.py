@@ -13,6 +13,14 @@ from selenium.common.exceptions import TimeoutException
 
 
 class WorkflowTests(unittest.TestCase):
+    @patch.object(run_ci.subprocess, 'run')
+    def test_batch_stops_after_first_failed_attempt(self, execute):
+        execute.return_value.returncode = 1
+        self.assertEqual(run_ci.run({'KEY_COUNT': '4'}), 1)
+        execute.assert_called_once()
+        args = execute.call_args.args[0]
+        self.assertEqual(args[args.index('--repeat') + 1], '1')
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -35,10 +43,28 @@ class WorkflowTests(unittest.TestCase):
     @patch.object(run_ci.subprocess, 'run')
     def test_success_requires_nonempty_output(self, execute):
         def write_output(*args, **kwargs):
-            (self.root / 'keys.txt').write_text('fixture result')
+            (self.root / 'keys.txt').write_text('License Key: fixture-key\n')
             return Mock(returncode=0)
         execute.side_effect = write_output
         self.assertEqual(run_ci.run({}), 0)
+
+    @patch.object(run_ci.subprocess, 'run')
+    def test_earlier_result_cannot_mask_missing_second_result(self, execute):
+        def unchanged_output(*args, **kwargs):
+            (self.root / 'keys.txt').write_text('License Key: fixture-key\n')
+            return Mock(returncode=0)
+        execute.side_effect = unchanged_output
+        with self.assertRaisesRegex(RuntimeError, 'expected new result'):
+            run_ci.run({'KEY_COUNT': '2'})
+
+    @patch.object(run_ci.subprocess, 'run')
+    def test_empty_key_is_not_a_successful_result(self, execute):
+        def empty_key(*args, **kwargs):
+            (self.root / 'keys.txt').write_text('License Key: None\n')
+            return Mock(returncode=0)
+        execute.side_effect = empty_key
+        with self.assertRaisesRegex(RuntimeError, 'expected new result'):
+            run_ci.run({})
 
     @patch.object(run_ci.subprocess, 'run')
     def test_rejects_invalid_counts_before_execution(self, execute):

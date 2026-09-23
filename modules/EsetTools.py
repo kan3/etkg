@@ -1,5 +1,5 @@
 from .EmailAPIs import *
-from .HomeSession import ensure_home_session
+from .HomeSession import ensure_home_session, wait_for_trial_option
 
 from pathlib import Path
 
@@ -129,8 +129,7 @@ class EsetKeygen(object):
         self.__press_button_with_text(['continue', 'continua'])
     
         trial_card = '148' if self.mode == 'ESET HOME' else '172'
-        uCE(self.driver, f"return {GET_EBAV}('label', 'data-label', 'onboarding-trial-protect-card-{trial_card}') != null",
-            description=f'{self.mode} trial option (card {trial_card})')
+        wait_for_trial_option(self.driver, trial_card)
         if self.mode == 'ESET HOME':
             uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('label', 'data-label', 'onboarding-trial-protect-card-148'))")
         elif self.mode == 'SMALL BUSINESS':

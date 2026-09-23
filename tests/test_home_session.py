@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 from modules.HomeSession import (
     HOME_CONTROLS, LOGIN_BUTTON, WELCOME, ensure_home_session, session_state,
+    TrialUnavailableError, trial_option_state,
 )
 from modules.EsetTools import EsetRegister
 from modules.EmailAPIs import CustomEmailAPI
@@ -13,6 +14,19 @@ def element():
 
 
 class SessionTests(unittest.TestCase):
+    def test_service_refusal_fails_immediately(self):
+        driver = Mock()
+        driver.execute_script.return_value = "No free 30-day trials available\nIt looks like you've already used your available trials."
+        with self.assertRaisesRegex(TrialUnavailableError, 'without ESET eligibility'):
+            trial_option_state(driver, '148')
+        driver.find_elements.assert_not_called()
+
+    def test_available_trial_option_is_detected(self):
+        driver = Mock()
+        driver.execute_script.return_value = 'Choose your trial'
+        driver.find_elements.return_value = [element()]
+        self.assertTrue(trial_option_state(driver, '148'))
+
     def make_login(self, submit_succeeds=True):
         driver = Mock(current_url='https://login.eset.com/login')
         email, password, submit, home = [element() for _ in range(4)]

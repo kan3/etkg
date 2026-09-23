@@ -1,5 +1,18 @@
 # Workflow troubleshooting
 
+## Current external blocker
+
+The diagnostic run on September 23, 2026 reached a confirmed, authenticated
+session, but ESET displayed **No free 30-day trials available** and stated that
+the available trials had already been used:
+[diagnostic run](https://github.com/kan3/etkg/actions/runs/35887787610).
+This refusal prevents successful key generation; code cannot grant eligibility.
+The workflow now reports the refusal immediately and stops the batch after a
+failed attempt rather than registering more accounts. Earlier successful
+results are preserved and counted, but a partial batch remains a failure.
+Trial availability needs to be resolved through ESET before a further live
+generation test can establish end-to-end success.
+
 ## Verified configuration
 
 Use **ubuntu-latest** with **inboxes**, now the workflow defaults.
