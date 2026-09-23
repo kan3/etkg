@@ -15,6 +15,16 @@ but that does not prove that each live browser integration works.
 
 ## Mail and workflow diagnostics
 
+Account confirmation now requires visible ESET HOME controls on the actual
+`home.eset.com` origin. The login page's title also contains "ESET HOME", so
+title matching alone was not evidence of an authenticated session. When the
+confirmation link redirects to the welcome or login page, the script follows
+the normal login flow once, using that attempt's existing account credentials.
+Additional verification is reported as a failure rather than bypassed. An
+already-skipped welcome screen no longer causes a mandatory-skip timeout.
+Confirmation tokens are no longer printed. CI installs use the tested versions
+in `constraints-ci.txt`.
+
 The four-attempt run on September 23, 2026 completed one request, timed out
 waiting for a confirmation link once, and twice timed out waiting for the
 home-product trial option. A failed batch can therefore contain successful

@@ -1,4 +1,5 @@
 from .EmailAPIs import *
+from .HomeSession import ensure_home_session
 
 from pathlib import Path
 
@@ -97,23 +98,13 @@ class EsetRegister(object):
             else:
                 token = parseToken(self.email_obj, max_iter=100, delay=3) # 1secmail, developermail
         
-        logging.info(f'ESET-HOME-Token: {token}')
         logging.info('Account confirmation is in progress...')
-        console_log(f'ESET-HOME-Token: {token}', OK, silent_mode=SILENT_MODE)
         console_log('\nAccount confirmation is in progress...', INFO, silent_mode=SILENT_MODE)
         self.driver.get(f'https://login.eset.com/link/confirmregistration?token={token}')
-        uCE(self.driver, 'return document.title.includes("ESET HOME")')
+        ensure_home_session(self.driver, self.email_obj.email, self.eset_password)
         
-        try:
-            uCE(self.driver, f'return {GET_EBCN}("verification-email_p").length === 0')
-        except:
-            self.driver.get(f'https://login.eset.com/link/confirmregistration?token={token}')
-            uCE(self.driver, 'return document.title.includes("ESET HOME")')
-            uCE(self.driver, f'return {GET_EBCN}("verification-email_p").length === 0')
-            uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('button', 'data-label', 'onboarding-welcome-skip-introduction-btn'))")
-        
-        logging.info('Account successfully confirmed!')
-        console_log('Account successfully confirmed!', OK, silent_mode=SILENT_MODE)
+        logging.info('Account confirmed and authenticated!')
+        console_log('Account confirmed and authenticated!', OK, silent_mode=SILENT_MODE)
         return True
 
 class EsetKeygen(object):
@@ -130,7 +121,10 @@ class EsetKeygen(object):
         logging.info(f'[{self.mode}] Sending request and waiting for response...')
         console_log(f'\n[{self.mode}] Sending request and waiting for response...', INFO, silent_mode=SILENT_MODE)
 
-        uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('button', 'data-label', 'onboarding-welcome-skip-introduction-btn'))")
+        uCE(self.driver, "return document.querySelector('[data-label=\"onboarding-welcome-skip-introduction-btn\"], [data-label=\"onboarding-add-subscription-protect-card-trial\"]') !== null",
+            description='signed-in onboarding or subscription entry')
+        uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('button', 'data-label', 'onboarding-welcome-skip-introduction-btn'))",
+            max_iter=1, delay=0, raise_exception_if_failed=False)
         uCE(self.driver, f"return {CLICK_WITH_BOOL}({GET_EBAV}('label', 'data-label', 'onboarding-add-subscription-protect-card-trial'))")
         self.__press_button_with_text(['continue', 'continua'])
     

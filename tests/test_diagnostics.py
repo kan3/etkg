@@ -20,7 +20,7 @@ class DiagnosticTests(unittest.TestCase):
 
     def test_small_business_waits_for_its_own_card(self):
         keygen = EsetKeygen(Mock(), Mock(), 'SMALL BUSINESS')
-        with patch('modules.EsetTools.untilConditionExecute', side_effect=[True, True, RuntimeError('stop')]) as wait, \
+        with patch('modules.EsetTools.untilConditionExecute', side_effect=[True, True, True, RuntimeError('stop')]) as wait, \
              patch.object(keygen, '_EsetKeygen__press_button_with_text'), \
              patch('modules.EsetTools.console_log'):
             with self.assertRaisesRegex(RuntimeError, 'stop'):
