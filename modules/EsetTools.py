@@ -1,5 +1,6 @@
 from .EmailAPIs import *
 from .HomeSession import ensure_home_session, wait_for_trial_option
+from .BrowserDiagnostics import page_diagnostic
 
 from pathlib import Path
 
@@ -68,7 +69,7 @@ class EsetRegister(object):
         for _ in range(DEFAULT_MAX_ITER):
             title = exec_js('return document.title')
             if title == 'Service not available':
-                raise IPBlockedException('\nESET temporarily blocked your IP, try again later!!! Try to use VPN/Proxy or try to change Email API!!!')
+                raise RuntimeError('ESET registration did not complete. ' + page_diagnostic(self.driver))
             
             url = exec_js('return document.URL')
             if url == 'https://home.eset.com/':
@@ -76,13 +77,13 @@ class EsetRegister(object):
                 console_log('Successfully!', OK, silent_mode=SILENT_MODE)
                 return True
             
-            page_source = self.driver.page_source
-            if 'This email address is already registered' in page_source:
-                raise RuntimeError(f'Email: {self.email_obj.email} is already registered!')
+            page_text = exec_js("return document.body ? document.body.innerText : ''")
+            if 'This email address is already registered' in page_text:
+                raise RuntimeError('ESET reports that this email address is already registered.')
             
             time.sleep(DEFAULT_DELAY)
         
-        raise IPBlockedException('\nESET temporarily blocked your IP, try again later!!! Try to use VPN/Proxy or try to change Email API!!!')
+        raise RuntimeError('ESET registration did not complete. ' + page_diagnostic(self.driver))
 
     def confirmAccount(self):
         uCE = untilConditionExecute
@@ -261,7 +262,7 @@ class EsetProtectHubRegister(object):
             logging.info('Successfully!')
             console_log('Successfully!', OK, silent_mode=SILENT_MODE)
         except:
-            raise IPBlockedException('\nESET temporarily blocked your IP, try again later!!! Try to use VPN/Proxy or try to change Email API!!!')
+            raise RuntimeError('ESET registration did not complete. ' + page_diagnostic(self.driver))
         return True
 
     def activateAccount(self):
