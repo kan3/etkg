@@ -1,6 +1,6 @@
 import unittest
-from unittest.mock import Mock, patch
-from selenium.common.exceptions import TimeoutException
+from unittest.mock import Mock, patch, PropertyMock
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from modules.EmailAPIs import InboxesAPI
 
 
@@ -9,6 +9,14 @@ class InboxesTests(unittest.TestCase):
         driver = Mock()
         driver.find_elements.return_value = [Mock(text='Creating...'), Mock(text='wrong@example.com suffix')]
         self.assertFalse(InboxesAPI(driver)._ready_address(driver))
+
+    def test_page_refresh_retries_instead_of_aborting(self):
+        driver, stale = Mock(), Mock()
+        type(stale).text = PropertyMock(side_effect=StaleElementReferenceException())
+        driver.find_elements.side_effect = [[stale], [Mock(text='user@example.com')]]
+        api = InboxesAPI(driver)
+        self.assertFalse(api._ready_address(driver))
+        self.assertEqual(api._ready_address(driver), 'user@example.com')
 
     def test_valid_address_allows_domain_digits_and_hyphens(self):
         driver = Mock()

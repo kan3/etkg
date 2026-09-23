@@ -4,7 +4,7 @@ from email import policy, parser
 
 import requests
 import time
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import urlsplit
 
@@ -320,7 +320,10 @@ class InboxesAPI:
 
     def _ready_address(self, driver):
         for element in driver.find_elements('css selector', 'span'):
-            address = element.text.strip()
+            try:
+                address = element.text.strip()
+            except StaleElementReferenceException:
+                return False
             if re.fullmatch(r'[A-Za-z0-9.!#$%&\'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}', address):
                 return address
         return False
