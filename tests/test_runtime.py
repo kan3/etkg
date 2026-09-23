@@ -1,11 +1,14 @@
 import importlib
+import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
 from scripts import run_ci
-from modules.EmailAPIs import EmailFakeAPI
+from modules.EmailAPIs import EmailFakeAPI, PARSE_EMAILFAKE_INBOX
 from selenium.common.exceptions import TimeoutException
 
 
@@ -53,6 +56,29 @@ class WorkflowTests(unittest.TestCase):
 
 
 class MailTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for the DOM fixture')
+    def test_current_clickable_rows_and_empty_inboxes(self):
+        fixture = r'''
+const parse = new Function('document', PARSER);
+const doc = rows => ({getElementById: () => ({children: rows})});
+const row = {tagName: 'DIV', hasAttribute: name => name === 'onclick',
+    children: [{innerText: 'sender@example.com'}, {innerText: 'Test message'}]};
+if (parse(doc([])).length !== 0) throw Error('Empty inbox must be valid');
+if (parse({getElementById: () => null}).length !== 0) throw Error('Missing table');
+const result = parse(doc([row]));
+if (result[0][0] !== row || result[0][1] !== 'sender@example.com' ||
+    result[0][2] !== 'Test message') throw Error('Clickable row lost');
+'''.replace('PARSER', json.dumps(PARSE_EMAILFAKE_INBOX))
+        subprocess.run(['node', '-e', fixture], check=True, capture_output=True, text=True)
+
+    def test_clickable_message_uses_its_click_handler(self):
+        driver, row = Mock(), Mock()
+        api = EmailFakeAPI(driver)
+        api.open_mail(row)
+        row.click.assert_called_once()
+        driver.get.assert_not_called()
+        self.assertTrue(api.opened_mail)
+
     def test_empty_address_or_placeholder_is_not_success(self):
         driver = Mock()
         driver.find_element.return_value.text = 'Creating...'
@@ -104,6 +130,7 @@ class MainFailureTests(unittest.TestCase):
         with patch.object(app, 'args', args), \
              patch.object(app, 'MBCI_MODE', False), \
              patch.object(app, 'PROXIES', []), \
+             patch.object(app.logging, 'critical'), \
              patch.object(app, 'WebDriverInstaller') as installer, \
              patch.object(app, 'initSeleniumWebDriver', return_value=driver), \
              patch.dict(app.EMAIL_API_CLASSES, {'emailfake': Mock(return_value=mail)}), \
@@ -121,6 +148,7 @@ class MainFailureTests(unittest.TestCase):
         with patch.object(app, 'args', args), \
              patch.object(app, 'MBCI_MODE', False), \
              patch.object(app, 'PROXIES', []), \
+             patch.object(app.logging, 'critical'), \
              patch.object(app, 'WebDriverInstaller') as installer, \
              patch.object(app, 'initSeleniumWebDriver', side_effect=RuntimeError('browser failed')), \
              patch.object(app, 'console_log'):

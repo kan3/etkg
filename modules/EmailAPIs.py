@@ -97,13 +97,14 @@ if (!table || !table.children.length) return inbox
 let messages = table.children
 let first_message = messages[0]
 let first_childrens = first_message.children
-if (first_message.tagName === 'DIV')
+if (first_message.tagName === 'DIV' && !first_message.hasAttribute('onclick') && first_childrens.length >= 2)
     return [['https://emailfake.com', first_childrens[0].innerText, first_childrens[1].innerText]]
 for (let i = 0; i < messages.length; i++)
 {
     let message = messages[i]
     let childrens = messages[i].children
-    inbox.push([message.href, childrens[0].innerText, childrens[1].innerText])
+    if (childrens.length < 2) continue
+    inbox.push([message.href || message, childrens[0].innerText, childrens[1].innerText])
 }
 return inbox
 """
@@ -440,7 +441,10 @@ class EmailFakeAPI:
     
     def open_mail(self, url):
         self.driver.switch_to.window(self.window_handle)
-        self.driver.get(url)
+        if isinstance(url, str):
+            self.driver.get(url)
+        else:
+            url.click()
         self.opened_mail = True
 
 class CustomEmailAPI:
