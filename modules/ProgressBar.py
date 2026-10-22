@@ -1,7 +1,7 @@
 from colorama import Fore, init as colorama_init
 
-import platform
 import decimal
+import platform
 import sys
 
 colorama_init()

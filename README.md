@@ -1,11 +1,16 @@
+> **Fork maintenance:** This fork includes workflow and reliability fixes that
+> upstream does not contain. Review upstream changes through a pull request;
+> avoid discarding this fork's commits when syncing. See
+> [workflow troubleshooting](docs/troubleshooting.md) for the recovery details.
+
 <div align="center">
   <img src="https://github.com/shadowcopyrz/etkg/blob/main/img/logo_alt.png?raw=true" alt="logo"/>
     
-  ![Version](https://img.shields.io/badge/version-1.5.7.4-gold)
+  ![Version](https://img.shields.io/badge/version-1.5.6.7-gold)
   
   [![Commit activity](https://img.shields.io/github/commit-activity/t/shadowcopyrz/etkg/main?cacheSeconds=0)](https://github.com/shadowcopyrz/etkg/commits/main)
   ![Last commit](https://img.shields.io/github/last-commit/shadowcopyrz/etkg/main?cacheSeconds=0)
-  ![Last test](https://img.shields.io/badge/last_test-21.10.2026_06:34_UTC+3-blue)
+  ![Last test](https://img.shields.io/badge/last_test-23.09.2026_06:36_UTC+3-blue)
   [![Opened issues](https://img.shields.io/github/issues/shadowcopyrz/etkg?color=darkred)](https://github.com/shadowcopyrz/etkg/issues?cacheSeconds=0)
   [![Closed issues](https://img.shields.io/github/issues-closed/shadowcopyrz/etkg?color=darkgreen&cacheSeconds=0)](https://github.com/shadowcopyrz/etkg/issues?q=is%3Aissue+is%3Aclosed)
   ![License](https://img.shields.io/github/license/shadowcopyrz/etkg)
@@ -42,11 +47,13 @@ My [public channel with archives of my projects](https://t.me/rzc0d3r_official)
 - Current Status: Active
 
 ## Known Errors
-- **Almost all Email APIs have been blocked by ESET!!!**
-- **ESET** has removed the trial version for VPN, it is now **fully paid**!
+- **Almost all Email APIs have been blocked by ESET!!!** Recommended to use ```emailfake```, ```inboxes``` and also use the ```--custom-email-api``` argument!
+- **ESET** has removed the trial version for VPN, it is now **fully paid**. The ```--vpn-codes``` argument does not work now!
+- ```mailticking```, ```incognitomail``` added **cloudflare** captcha
 - **ACT0**, **ACT5** errors may occur during activation in some cases
 - **ecp4125** activation error has been reported by some users
 - **ESET ProtectHub** has an aggressive policy for temporary email addresses!
+- ~~**ESET** stopped sending emails to ```incognitomail```, it is not recommended to use this **Email API** now!~~
 ## Planned Features
 - Improved error handling/reporting
 - Support
@@ -121,18 +128,16 @@ pip install -r requirements.txt
 ---
 
 ## 3. Preparing ESET
-1. Delete your current ESET HOME account
+Delete your current ESET HOME account
 
 ![](img/delete_eset_home_account.png)
-
-2. Disable browser protection in ESET by following these [instructions](https://help.eset.com/eis/18/en-US/idh_config_browser_protection.html)
 
 ---
 
 ## 4. How to use (Part 2)
 1. [Account Generator](wiki/AccountGenerator.md)
 2. [Key Generator](wiki/KeyGenerator.md)
-3. [Reset ESET VPN](wiki/ResetEsetVPN.md) [outdated]
+3. [Reset ESET VPN](wiki/ResetEsetVPN.md)
 4. [Command Line Arguments](wiki/CommandLineArguments.md)
 5. [Updater](wiki/Updater.md)
 6. [Installer](wiki/Installer.md)
