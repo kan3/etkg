@@ -11,6 +11,7 @@ import time
 import sys
 
 SILENT_MODE = '--silent' in sys.argv
+REGISTRATION_MAX_ITER = 120
 
 class IPBlockedException(Exception):
     def __init__(self, message):
@@ -66,7 +67,7 @@ class EsetRegister(object):
 
         uCE(self.driver, f"return {CLICK_WITH_BOOL}({DEFINE_GET_EBAV_FUNCTION}('button', 'data-label', 'register-create-account-button'))")
         
-        for _ in range(DEFAULT_MAX_ITER):
+        for _ in range(REGISTRATION_MAX_ITER):
             title = exec_js('return document.title')
             if title == 'Service not available':
                 raise RuntimeError('ESET registration did not complete. ' + page_diagnostic(self.driver))
@@ -83,7 +84,8 @@ class EsetRegister(object):
             
             time.sleep(DEFAULT_DELAY)
         
-        raise RuntimeError('ESET registration did not complete. ' + page_diagnostic(self.driver))
+        raise RuntimeError('ESET registration did not complete within 120 seconds. '
+                           + page_diagnostic(self.driver))
 
     def confirmAccount(self):
         uCE = untilConditionExecute

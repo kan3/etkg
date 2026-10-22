@@ -14,6 +14,11 @@ The repaired baseline completed successfully on October 22 before the sync:
 The later green runs on the synced code contain failures; a green check alone
 does not prove that any output was produced.
 
+The first restored live run reached registration but remained on a visible
+**Loading** state at the old 30-second deadline. Registration now waits up to
+two minutes for that single submission; it does not resubmit the form. A
+timeout remains a failure and includes the redacted visible page state.
+
 To retain the fork's repairs during future updates, merge reviewed upstream
 changes through a branch and pull request. Resolve conflicts while retaining
 the local workflow runner, tests, dependency constraints, and session helpers.
