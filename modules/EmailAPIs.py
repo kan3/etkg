@@ -4,7 +4,9 @@ from email import policy, parser
 
 import requests
 import time
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException, TimeoutException, StaleElementReferenceException,
+)
 from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import urlsplit
 
@@ -290,37 +292,43 @@ class InboxesAPI:
     def init(self):
         self.driver.get('https://inboxes.com')
         self.window_handle = self.driver.current_window_handle
-        button = None
-        for _ in range(DEFAULT_MAX_ITER):
-            try:
-                button = self.driver.find_element('xpath', '//button[contains(text(), "Get my first inbox!")]')
-                break
-            except:
-                pass
-            time.sleep(DEFAULT_DELAY)
-        if button is not None:
-            button.click()
-            time.sleep(1)
-            for button in self.driver.execute_script(f'return {GET_EBTN}("button")'):
-                if button.text.strip().lower() == 'choose for me':
+        self.email = None
+        try:
+            button = WebDriverWait(self.driver, 30, poll_frequency=1).until(self._open_inbox_chooser)
+        except TimeoutException as error:
+            from .BrowserDiagnostics import page_diagnostic
+            raise RuntimeError('inboxes: mailbox chooser was not available within 30 seconds. '
+                               + page_diagnostic(self.driver)) from error
+        button.click()
+        try:
+            self.email = WebDriverWait(self.driver, 30).until(self._ready_address)
+        except TimeoutException as error:
+            from .BrowserDiagnostics import page_diagnostic
+            raise RuntimeError('inboxes: no valid mailbox address appeared within 30 seconds. '
+                               + page_diagnostic(self.driver)) from error
+
+    def _open_inbox_chooser(self, driver):
+        # The landing page can render before its click handlers are ready.
+        # Confirm that the chooser actually opened before reading any address.
+        try:
+            for button in driver.find_elements('xpath', '//button[normalize-space(.)="Choose for me"]'):
+                if button.is_displayed() and button.is_enabled():
+                    return button
+            for button in driver.find_elements('xpath', '//button[contains(normalize-space(.), "Get my first inbox")]'):
+                if button.is_displayed() and button.is_enabled():
                     button.click()
                     break
-            try:
-                self.email = WebDriverWait(self.driver, 30).until(self._ready_address)
-            except TimeoutException as error:
-                from .BrowserDiagnostics import page_diagnostic
-                raise RuntimeError(
-                    'inboxes: no valid email address appeared within 30 seconds. '
-                    + page_diagnostic(self.driver)
-                ) from error
-        else:
-            from .BrowserDiagnostics import page_diagnostic
-            raise RuntimeError('inboxes: create-inbox button was not available. '
-                               + page_diagnostic(self.driver))
+        except (StaleElementReferenceException, ElementClickInterceptedException):
+            pass
+        return False
 
     def _ready_address(self, driver):
-        for element in driver.find_elements('css selector', 'span'):
+        # Sample sender addresses also appear in table spans on the landing page.
+        # Only the selected mailbox's heading is authoritative.
+        for element in driver.find_elements('css selector', 'h1 span'):
             try:
+                if not element.is_displayed():
+                    continue
                 address = element.text.strip()
             except StaleElementReferenceException:
                 return False

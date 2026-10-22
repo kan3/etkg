@@ -100,6 +100,15 @@ This is a provider access restriction, not a Node.js or checkout error.
 The same runner successfully initialized a mailbox with `inboxes`, which is
 now the workflow default. The standalone CLI retains its upstream default;
 pass `--email-api inboxes` explicitly when checking this provider locally.
+
+An October 22 check found that the Inboxes landing page also contains sample
+message senders. The old generic span search could select one of those
+addresses if the mailbox chooser had not opened yet. Initialization now
+confirms **Choose for me** is available, selects it, and reads only the actual
+mailbox address from the page heading. A chooser or address timeout fails
+before ESET registration. An actual address that ESET reports as registered
+still produces a failure; the script does not try to access that account.
+
 Do not treat a provider's challenge page as a successful mailbox. Wait for
 access to be restored or select another supported provider. Interactive
 verification must be completed through the provider's supported process.
