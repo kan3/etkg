@@ -21,9 +21,24 @@ class ConfirmationTokenTests(unittest.TestCase):
     def test_confirmation_is_found_in_either_message_order(self):
         confirmation = self.message(f'<a href="https://login.eset.com/confirm?token={TOKEN}">Confirm</a>')
         notification = self.message('A later notification without an activation link.')
-        for messages in ([confirmation, notification], [notification, confirmation]):
-            with self.subTest(messages=messages):
-                self.assertEqual(self.parse(self.api(messages)), TOKEN)
+        for provider in ('inboxes', 'developermail'):
+            for messages in ([confirmation, notification], [notification, confirmation]):
+                with self.subTest(provider=provider, messages=messages):
+                    self.assertEqual(self.parse(self.api(messages, provider=provider)), TOKEN)
+
+    def test_1secmail_fetches_confirmation_body_before_later_notification(self):
+        api = Mock(class_name='1secmail')
+        api.read_email.return_value = [
+            {'id': 101, 'from': 'noreply@product.eset.com', 'subject': 'Confirm account'},
+            {'id': 102, 'from': 'noreply@product.eset.com', 'subject': 'Notification'},
+        ]
+        api.get_message.side_effect = lambda message_id: {
+            'body': f'token={TOKEN}' if message_id == 101 else 'No confirmation link',
+        }
+        self.assertEqual(self.parse(api), TOKEN)
+        api.read_email.assert_called_once_with()
+        api.get_message.assert_called_once_with(101)
+        api.get_messages.assert_not_called()
 
     def test_product_sender_is_case_insensitive(self):
         api = self.api([self.message(f'token={TOKEN}', sender='NoReply@PRODUCT.ESET.COM')])
@@ -70,6 +85,7 @@ class ConfirmationTokenTests(unittest.TestCase):
             f'https://login.eset.com/confirm?token=short&amp;token&#61;{TOKEN}')
         self.assertEqual(self.parse(api, driver=driver), TOKEN)
         api.open_mail.assert_called_once_with('confirmation-id')
+        driver.switch_to.default_content.assert_called_once_with()
 
     def test_timeout_diagnostics_distinguish_reason_without_exposing_message_data(self):
         cases = [
