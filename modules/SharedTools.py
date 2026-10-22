@@ -16,6 +16,7 @@ import time
 import sys
 import os
 import re
+from html import unescape
 from .BrowserDiagnostics import page_diagnostic
 
 I_AM_EXECUTABLE = (True if (getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')) else False)
@@ -409,78 +410,85 @@ def initSeleniumWebDriver(browser_name: str, webdriver_path = None, browser_path
                 raise e
     return driver
 
+def _extract_confirmation_token(body, eset_business=False):
+    """Inspect all token candidates, including HTML-encoded email links."""
+    if not isinstance(body, str):
+        return None
+    pattern = r'activation/([a-zA-Z0-9-]+)' if eset_business else r'token=([a-zA-Z0-9:/-]*)'
+    for match in re.finditer(pattern, unescape(body), flags=re.IGNORECASE):
+        token = match.group(1)
+        if len(token) == 36:
+            return token
+    return None
+
+
 def parseToken(email_obj, driver=None, eset_business=False, delay=DEFAULT_DELAY, max_iter=DEFAULT_MAX_ITER):
-    activated_href = None
     if email_obj.class_name == 'custom':
         while True:
             activated_href = input(f'\n[  {colorama.Fore.YELLOW}INPT{colorama.Fore.RESET}  ] {colorama.Fore.CYAN}Enter the link to activate your account, it will come to the email address you provide: {colorama.Fore.RESET}').strip()
-            logging.info(f'[  INPT  ] Enter the link to activate your account, it will come to the email address you provide: {activated_href}')
-            if activated_href != '':
-                if eset_business:
-                    match = re.search(r'activation\/[a-zA-Z0-9-]+', activated_href)
-                else:
-                    match = re.search(r'token=[a-zA-Z\d:/-]*', activated_href)
-                if match is not None:
-                    if eset_business:
-                        token = match.group()[11:]
-                    else:
-                        token = match.group()[6:]
-                    if len(token) == 36:
-                        return token
+            token = _extract_confirmation_token(activated_href, eset_business)
+            if token:
+                return token
             logging.error('Incorrect link syntax')
             console_log('Incorrect link syntax', ERROR)
+
+    polls = max_messages = max_eset_matches = 0
     for _ in range(max_iter):
-        if email_obj.class_name == '1secmail':
-            json = email_obj.read_email()
-            if json != []:
-                for message in json:
-                    if eset_business and message['subject'].find('ESET PROTECT Hub') != -1:
-                        activated_href = email_obj.get_message(message['id'])['body']
-                    elif message['from'].find('product.eset.com') != -1:
-                        activated_href = email_obj.get_message(message['id'])['body']
-        elif email_obj.class_name in ['developermail', 'inboxes']:
-            messages = email_obj.get_messages()
-            if messages is not None:
-                for message in messages:
-                    if eset_business and message['subject'].find('ESET PROTECT Hub') != -1:
-                        activated_href = message['body']
-                    elif message['from'].find('product.eset.com') != -1:
-                        activated_href = message['body']
-        elif email_obj.class_name in ['guerrillamail', 'mailticking', 'fakemail', 'incognitomail', 'emailfake']:
-            inbox = email_obj.parse_inbox()
-            if inbox is None:
-                print(inbox)
-                continue
-            for mail in inbox:
-                mail_id, mail_from, mail_subject = mail
-                if mail_from.find('product.eset.com') != -1 or mail_from.find('ESET HOME') != -1 or mail_subject.find('ESET PROTECT Hub') != -1:
+        polls += 1
+        eset_matches = 0
+        if email_obj.class_name in ('1secmail', 'developermail', 'inboxes'):
+            messages = (email_obj.read_email() if email_obj.class_name == '1secmail'
+                        else email_obj.get_messages()) or []
+            max_messages = max(max_messages, len(messages))
+            for message in messages:
+                sender = str(message.get('from') or '').casefold()
+                subject = str(message.get('subject') or '').casefold()
+                if ('product.eset.com' in sender
+                        or (eset_business and 'eset protect hub' in subject)):
+                    eset_matches += 1
+                    body = (email_obj.get_message(message['id'])['body']
+                            if email_obj.class_name == '1secmail' else message.get('body'))
+                    # A later welcome/notification message must not hide a valid link.
+                    token = _extract_confirmation_token(body, eset_business)
+                    if token:
+                        return token
+        elif email_obj.class_name in ('guerrillamail', 'mailticking', 'fakemail', 'incognitomail', 'emailfake'):
+            inbox = email_obj.parse_inbox() or []
+            max_messages = max(max_messages, len(inbox))
+            for mail_id, mail_from, mail_subject in inbox:
+                sender = str(mail_from or '').casefold()
+                subject = str(mail_subject or '').casefold()
+                if ('product.eset.com' in sender or 'eset home' in sender
+                        or 'eset protect hub' in subject):
+                    eset_matches += 1
                     email_obj.open_mail(mail_id)
-                    if email_obj.class_name in ['mailticking', 'incognitomail', 'emailfake']:
+                    if email_obj.class_name in ('mailticking', 'incognitomail', 'emailfake'):
                         time.sleep(2)
                     try:
                         if email_obj.class_name == 'mailticking':
                             driver.switch_to.frame(driver.find_element('id', 'email-iframe'))
-                        if eset_business:
-                            activated_href = driver.find_element('xpath', "//a[starts-with(@href, 'https://protecthub.eset.com')]").get_attribute('href') 
-                        else:
-                            activated_href = driver.find_element('xpath', "//a[starts-with(@href, 'https://login.eset.com')]").get_attribute('href')
-                        driver.switch_to.default_content()
-                    except:
+                        origin = 'https://protecthub.eset.com' if eset_business else 'https://login.eset.com'
+                        activated_href = driver.find_element('xpath', f"//a[starts-with(@href, '{origin}')]").get_attribute('href')
+                        token = _extract_confirmation_token(activated_href, eset_business)
+                        if token:
+                            return token
+                    except Exception:
                         pass
-        if activated_href is not None:
-            if eset_business:
-                match = re.search(r'activation\/[a-zA-Z0-9-]+', activated_href)
-            else:
-                match = re.search(r'token=[a-zA-Z\d:/-]*', activated_href)
-            if match is not None:
-                if eset_business:
-                    token = match.group()[11:]
-                else:
-                    token = match.group()[6:]
-                if len(token) == 36:
-                    return token
+                    finally:
+                        driver.switch_to.default_content()
+        max_eset_matches = max(max_eset_matches, eset_matches)
         time.sleep(delay)
-    raise RuntimeError('Token retrieval error, try again later or change the Email API!!!')
+
+    if not max_messages:
+        reason = 'The provider returned no messages.'
+    elif not max_eset_matches:
+        reason = 'Messages were returned, but none matched the expected ESET sender.'
+    else:
+        reason = 'ESET messages were returned, but none contained a usable confirmation link.'
+    raise RuntimeError(f'Confirmation email timeout [{email_obj.class_name}]: {reason} '
+                       f'(polls={polls}, max_messages={max_messages}, '
+                       f'max_eset_matches={max_eset_matches}).')
+
 
 def parseEPHKey(email_obj, driver=None, delay=DEFAULT_DELAY, max_iter=DEFAULT_MAX_ITER):
     for _ in range(max_iter):

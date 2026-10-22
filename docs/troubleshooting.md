@@ -82,8 +82,17 @@ passwords, and confirmation tokens are excluded from the summary.
 
 Browser-condition timeouts now report the page title and available onboarding
 control labels. A missing trial option alone does not establish an IP block;
-the old `TRY VPN` diagnosis was unsupported. The confirmation-email timeout
-also does not distinguish nondelivery from an unrecognized email template.
+the old `TRY VPN` diagnosis was unsupported.
+
+The [October 22 confirmation timeout](https://github.com/kan3/etkg/actions/runs/39847293040)
+does not establish whether the message was undelivered or unrecognized by the
+old parser. A later matching message without a token could hide a valid
+confirmation email. The parser now checks each message immediately, decodes
+HTML-escaped links, and examines all token candidates in that message.
+Timeouts report the poll count, maximum inbox message count, and maximum ESET
+sender matches. They distinguish an empty inbox, unmatched senders, and
+matching messages without a usable link, without printing message content or
+confirmation tokens. These changes do not guarantee email delivery.
 
 The **Account and Key Generator** workflow now runs the selected branch of
 this repository. It no longer clones and executes the upstream repository.
