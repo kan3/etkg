@@ -1,4 +1,5 @@
 """Cross-platform workflow entry point with strict failure propagation."""
+from html import escape
 import os
 from pathlib import Path
 import subprocess
@@ -16,8 +17,35 @@ def result_count(output, operation):
                for line in text.splitlines())
 
 
+def license_results(output):
+    """Read only license keys and their expiry dates from the output records."""
+    text = output.read_text(encoding='utf-8', errors='replace') if output.is_file() else ''
+    results = []
+    current = None
+    for line in text.splitlines():
+        if line.startswith('License Key:'):
+            current = None
+            key = line.partition(':')[2].strip()
+            if key.lower() not in ('', 'none', 'null'):
+                current = {'key': key, 'expiry': 'Not reported'}
+                results.append(current)
+        elif line.startswith('License Out Date:') and current is not None:
+            expiry = line.partition(':')[2].strip()
+            if expiry.lower() not in ('', 'none', 'null'):
+                current['expiry'] = expiry
+        elif line.startswith(('Account Email:', '---')):
+            current = None
+    return results
+
+
+def summary_cell(value):
+    # Escape HTML and table delimiters in data returned by external services.
+    value = escape(value).replace('|', '&#124;').replace('`', '&#96;')
+    return f'<code>{value}</code>'
+
+
 def report_result(output, count, operation, returncode, env):
-    """Summarize partial results without copying credentials into the summary."""
+    """Show counts and requested license results without copying account credentials."""
     completed = result_count(output, operation)
     message = (f'{operation}: {completed} completed out of {count} requested; '
                f'script exit code {returncode}.')
@@ -26,6 +54,15 @@ def report_result(output, count, operation, returncode, env):
     if summary:
         with open(summary, 'a', encoding='utf-8') as stream:
             stream.write(f'- {message}\n')
+            if operation in ('--key', '--small-business-key'):
+                results = license_results(output)
+                if results:
+                    stream.write('\n### Generated license keys\n\n')
+                    stream.write('| License key | Expiry date |\n| --- | --- |\n')
+                    for result in results:
+                        stream.write(f'| {summary_cell(result["key"])} | '
+                                     f'{summary_cell(result["expiry"])} |\n')
+                    stream.write('\n')
     if returncode and completed:
         print('Partial results are present in the script output above. '
               'The job fails because at least one attempt failed.', flush=True)

@@ -75,8 +75,10 @@ in `constraints-ci.txt`.
 The four-attempt run on September 23, 2026 completed one request, timed out
 waiting for a confirmation link once, and twice timed out waiting for the
 home-product trial option. A failed batch can therefore contain successful
-results in its console output. The workflow summary now reports completed
-versus requested counts without including account credentials or keys.
+results in its console output. The workflow summary reports completed versus
+requested counts and shows each generated license key with its expiry date,
+including keys from a partially successful batch. Account email addresses,
+passwords, and confirmation tokens are excluded from the summary.
 
 Browser-condition timeouts now report the page title and available onboarding
 control labels. A missing trial option alone does not establish an IP block;
@@ -105,7 +107,9 @@ verification must be completed through the provider's supported process.
 Mail initialization errors now retain their cause. Script errors, failed
 repeated attempts, and missing output files produce a failed workflow rather
 than a misleading green check. Successful account/key output remains in the
-script's console output; workflow summaries no longer duplicate credentials.
+script's console output. New run summaries also display license keys and expiry
+dates. Already completed run summaries are unchanged; find their original
+output by opening the **Run script** step in the job logs.
 
 The **Test the project** workflow runs mocked regression tests on Linux,
 Windows, and macOS on pushes, pull requests, or manual dispatch. It does not

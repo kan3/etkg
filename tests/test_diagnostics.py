@@ -28,13 +28,16 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual('172', wait.call_args.args[1])
 
 
-    def test_partial_result_summary_does_not_expose_credentials(self):
+    def test_partial_result_summary_shows_key_without_account_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'keys.txt'
             summary = Path(directory) / 'summary.md'
-            output.write_text('Account Email: private@example.com\nLicense Key: SECRET-FIXTURE\n')
+            output.write_text('Account Email: private@example.com\n'
+                              'Account Password: PRIVATE-PASSWORD\n'
+                              'License Key: KEY-FIXTURE\n', encoding='utf-8')
             report_result(output, 4, '--key', 1, {'GITHUB_STEP_SUMMARY': str(summary)})
             content = summary.read_text()
             self.assertIn('1 completed out of 4', content)
-            self.assertNotIn('SECRET', content)
+            self.assertIn('KEY-FIXTURE', content)
             self.assertNotIn('private@example.com', content)
+            self.assertNotIn('PRIVATE-PASSWORD', content)
